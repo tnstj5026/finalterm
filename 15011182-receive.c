@@ -4,40 +4,52 @@
 #include <stdio.h>
 #include <string.h>
 
-void handler(int signo, siginfo_t * siginfo, void* context)
+void handler(int signo)
 {
-        // when the signal is caught, this function will be executed
-         if (siginfo->si_value.sival_int)
-                 printf("%d is caught.\n", siginfo->si_value.sival_int);
+        psignal(signo, "Received signal: ");
  }
 
  int main(int argc, char** argv)
  {
+         int input;
          struct sigaction act;
 
-         // initialize struct act with 0
-         memset(&act, 0, sizeof(act));
+         act.sa_flags = 0;
+         act.sa_handler = handler;
 
-         act.sa_sigaction = handler;
-         act.sa_flags = SA_SIGINFO;
-         // SA_SIGINFO is set to be entered as void func(int signo, siginfo_     *info, void *context)
-         // so, it can use si_value.sival_int variable of siginfo
+         // checking whether the receiver's pid was input or not
+         if (argc != 2) {
+                 // printing out error message
+                 printf("Execute this program with receiver's pid\n");
+                 exit(1);
 
-         // Real-time signal 'SIGRTMIN' is set for catching signal
-         if (sigaction(SIGRTMIN, &act, NULL) < 0)
+
+
+         // recevier's pid is stored in rec_pid for real-time communication
+         pid_t rec_pid = atoi(argv[1]);
+
+         // User input section
+         printf("Sending PID, SIGTSTP, student id: ");
+
+
+         if (sigaction(SIGTSTP, &act, (struct sigaction*)NULL) < 0)
          {
                  // when sigaction is failed
                  perror("sigaction error");
-                 exit(2);
+                 exit(1);
          }
 
-         // waiting for receving signal from signal queue
-         // it could be 'do something' in other program
-         // this program is made for test, so it just uses infinite loop
-         while (1)
+         union sigval sigval;
+         sigval.sival_int = 15011182;
+
+         // adding sigval into sigqueue
+         if (sigqueue(rec_pid, SIGRTMIN, sigval) < 0)
          {
-                 sleep(5);
+                 // when sigqueue is failed
+                 perror("sigqueue error");
+                 exit(1);
          }
+         // checking valid value
 
          return 0;
  }
